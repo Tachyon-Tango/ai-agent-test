@@ -1,0 +1,3 @@
+
+
+FILE_CHAR_LIMIT = 10000
