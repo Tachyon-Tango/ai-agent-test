@@ -33,12 +33,14 @@ messages = [
 ]
 
 
+system_prompt = ""
 
 # Actual Generation of the prompt
 
 response = client.models.generate_content(
     model='gemini-2.0-flash-001', 
-    contents=messages
+    contents=messages,
+    config=types.GenerateContentConfig(system_instruction=system_prompt),
 )
 
 print(response.text)
