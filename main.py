@@ -4,10 +4,58 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from functions.get_files_info import schema_get_files_info
-from functions.get_file_content import schema_get_file_content
-from functions.write_file import schema_write_file
-from functions.run_python import schema_run_python_file
+from functions.get_files_info import *
+from functions.get_file_content import *
+from functions.write_file import *
+from functions.run_python import *
+
+### Constants
+WORKING_DIRECTORY = "./calculator"
+
+
+### Function Definitions
+
+def call_function(function_call_part, verbose=False):
+    if verbose:
+        print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+    else:
+        print(f" - Calling function: {function_call_part.name}")
+
+    func_name = function_call_part.name
+    func_args = function_call_part.args
+
+    match func_name:
+        case "get_files_info":
+            result =  get_files_info(WORKING_DIRECTORY, **func_args)
+        case "get_file_content":
+            result =  get_file_content(WORKING_DIRECTORY, **func_args)
+        case "write_file":
+            result =  write_file(WORKING_DIRECTORY, **func_args)
+        case "run_python_file":
+            result =  run_python_file(WORKING_DIRECTORY, **func_args)
+        case _:
+            return types.Content(
+                    role="tool",
+                    parts=[
+                        types.Part.from_function_response(
+                            name=func_name,
+                            response={"error": f"Unknown function: {func_name}"},
+                        )
+                    ],
+                )
+
+    return types.Content(
+        role="tool",
+        parts=[
+            types.Part.from_function_response(
+                name=func_name,
+                response={"result": result},
+            )
+        ],
+    )
+
+
+### Run Main Algorithm
 
 # Grab the API Key and pass to Google GenAi
 
@@ -73,14 +121,17 @@ response = client.models.generate_content(
         system_instruction=system_prompt),
 )
 
+# Process the generation resuls
+
 if len(response.function_calls) > 0:
     for function_call_part in response.function_calls:
-        print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+        function_call_result = call_function(function_call_part, verbose_arg)
+        if function_call_result.parts[0].function_response.response == None:
+            raise Exception("Function Call Response was None.")
+        if verbose_arg: 
+            print(f"-> {function_call_result.parts[0].function_response.response}")
 else:
     print(response.text)
-
-
-
 
 # Handle Verbose Flag
 

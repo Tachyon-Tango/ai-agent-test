@@ -17,7 +17,7 @@ schema_get_files_info = types.FunctionDeclaration(
     ),
 )
 
-def get_files_info(working_directory, directory=None):
+def get_files_info(working_directory, directory="."):
     try:
         path = os.path.join(working_directory, directory)
         abs_target_path = os.path.abspath(path)
