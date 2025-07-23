@@ -11,6 +11,7 @@ from functions.run_python import *
 
 ### Constants
 WORKING_DIRECTORY = "./calculator"
+MAX_GEN_ITERS = 20
 
 
 ### Function Definitions
@@ -108,30 +109,47 @@ When a user asks a question or makes a request, make a function call plan. You c
 - Execute Python files with optional arguments
 - Write or overwrite files
 
+Execute this plan with the tool before giving any text response back to the user.
+
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
 
-# Actual Generation of the prompt
 
-response = client.models.generate_content(
-    model='gemini-2.0-flash-001', 
-    contents=messages,
-    config=types.GenerateContentConfig(
-        tools=[available_functions],
-        system_instruction=system_prompt),
-)
 
-# Process the generation resuls
 
-if len(response.function_calls) > 0:
-    for function_call_part in response.function_calls:
-        function_call_result = call_function(function_call_part, verbose_arg)
-        if function_call_result.parts[0].function_response.response == None:
-            raise Exception("Function Call Response was None.")
-        if verbose_arg: 
-            print(f"-> {function_call_result.parts[0].function_response.response}")
-else:
-    print(response.text)
+for generation_iteration in range(MAX_GEN_ITERS):
+    try:
+        # Actual Generation of the prompt
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-001', 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt),
+        )
+
+        # Add the model candidates to the messages
+        for candidate in response.candidates:
+            messages.append(candidate.content)
+
+        # Process the generation resuls
+        if response.function_calls != None: #len(response.function_calls) > 0:
+            for function_call_part in response.function_calls:
+                function_call_result = call_function(function_call_part, verbose_arg)
+                if function_call_result.parts[0].function_response.response == None:
+                    raise Exception("Function Call Response was None.")
+                if verbose_arg: 
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+                messages.append(function_call_result)
+        else:
+            print(response.text)
+            break
+
+
+    except Exception as e:
+        raise Exception(e)
+
+
 
 # Handle Verbose Flag
 
